@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from sqlalchemy import create_engine, inspect, text
@@ -8,10 +9,19 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from service_osint.core.errors import DatabaseError
 
+logger = logging.getLogger(__name__)
+
 APP_DIR = Path.home() / ".service-osint"
 DB_PATH = APP_DIR / "case.db"
 
-engine = create_engine(f"sqlite:///{DB_PATH}", echo=False, future=True)
+engine = create_engine(
+    f"sqlite:///{DB_PATH}", 
+    echo=False, 
+    future=True,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    connect_args={"check_same_thread": False}
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 
@@ -37,8 +47,11 @@ def init_db() -> None:
     try:
         from . import models  # noqa: F401
 
+        logger.info(f"Initializing database at {DB_PATH}")
         Base.metadata.create_all(bind=engine)
+        logger.info("Database initialization completed successfully")
     except SQLAlchemyError as exc:
+        logger.error(f"Database initialization failed: {exc}")
         raise DatabaseError(
             f"Failed to initialize database at {DB_PATH}: {exc}",
             hint="Run `osint doctor` or delete a corrupted case.db after backup.",

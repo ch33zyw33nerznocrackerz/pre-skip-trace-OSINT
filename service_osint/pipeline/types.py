@@ -35,6 +35,26 @@ class PipelineConfig:
     domain: str | None = None
     domain_recon: bool = False
 
+    def __post_init__(self) -> None:
+        """Validate configuration after initialization."""
+        if not self.subject.strip():
+            raise ValueError("Subject name cannot be empty")
+        
+        if self.wait_ms < 0:
+            raise ValueError("wait_ms must be non-negative")
+        
+        if self.discovery_limit < 1 or self.discovery_limit > 50:
+            raise ValueError("discovery_limit must be between 1 and 50")
+        
+        if self.dork_limit < 1 or self.dork_limit > 20:
+            raise ValueError("dork_limit must be between 1 and 20")
+        
+        # Validate packet formats
+        valid_formats = {"html", "json", "csv", "pdf"}
+        invalid_formats = self.packet_formats - valid_formats
+        if invalid_formats:
+            raise ValueError(f"Invalid packet formats: {invalid_formats}")
+
 
 @dataclass
 class StepResult:

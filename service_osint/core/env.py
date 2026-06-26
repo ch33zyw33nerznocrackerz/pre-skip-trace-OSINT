@@ -84,5 +84,12 @@ def env_summary() -> dict[str, str]:
         elif key in _MASKED_KEYS:
             out[key] = "(set)"
         else:
-            out[key] = value
+            # Validate non-secret values
+            if key == "SEARXNG_URL" and value:
+                if not (value.startswith("http://") or value.startswith("https://")):
+                    out[key] = f"{value} (invalid URL format)"
+                else:
+                    out[key] = value
+            else:
+                out[key] = value
     return out

@@ -17,7 +17,9 @@ class ApiKeySpec:
     notes: str = ""
 
     def is_configured(self) -> bool:
-        return bool((os.getenv(self.env_var) or "").strip())
+        """Check if the API key environment variable is set and non-empty."""
+        value = os.getenv(self.env_var)
+        return bool(value and value.strip())
 
     def tier_label(self) -> str:
         return {
