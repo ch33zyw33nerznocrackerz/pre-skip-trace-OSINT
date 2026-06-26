@@ -79,8 +79,10 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
                 result.discovery_hits += len(hits)
                 result.evidence_added += n
                 emit("discovery_person", "ok", f"{len(hits)} hits, {n} new evidence", n)
-            except Exception as exc:  # noqa: BLE001
-                emit("discovery_person", "error", str(exc))
+            except (ValueError, TypeError, KeyError) as exc:
+                emit("discovery_person", "error", f"Configuration error: {exc}")
+            except Exception as exc:
+                emit("discovery_person", "error", f"Unexpected error: {exc}")
 
             # --- Discovery: top dork queries ---
             if config.dork_discovery:
@@ -103,8 +105,10 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
                     result.discovery_hits += len(dork_hits)
                     result.evidence_added += n
                     emit("discovery_dorks", "ok", f"{len(dork_hits)} hits from {len(top)} dorks", n)
-                except Exception as exc:  # noqa: BLE001
-                    emit("discovery_dorks", "error", str(exc))
+                except (ValueError, TypeError, KeyError) as exc:
+                    emit("discovery_dorks", "error", f"Configuration error: {exc}")
+                except Exception as exc:
+                    emit("discovery_dorks", "error", f"Unexpected error: {exc}")
 
         # --- Collectors ---
         for coll in default_collectors(config):
@@ -125,8 +129,10 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
                     if add_evidence_url(s, defendant.id, f"auto/collector/{coll}", u, notes=cr.notes):
                         result.evidence_added += 1
                 emit(step, "ok", f"evidence #{eid}", 1)
-            except Exception as exc:  # noqa: BLE001
-                emit(step, "error", str(exc))
+            except (ValueError, TypeError, KeyError) as exc:
+                emit(step, "error", f"Configuration error: {exc}")
+            except Exception as exc:
+                emit(step, "error", f"Unexpected error: {exc}")
 
         # --- FOSS: SpiderFoot / Photon (optional, slow) ---
         if config.foss:
@@ -160,8 +166,10 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
                         all_text.append(summary)
                     else:
                         emit(f"foss:{tool_id}", "skipped", foss_result.get("error", "failed")[:80])
-                except Exception as exc:  # noqa: BLE001
-                    emit(f"foss:{tool_id}", "error", str(exc))
+                except (ValueError, TypeError, KeyError) as exc:
+                    emit(f"foss:{tool_id}", "error", f"Configuration error: {exc}")
+                except Exception as exc:
+                    emit(f"foss:{tool_id}", "error", f"Unexpected error: {exc}")
             if foss_ran:
                 emit("foss_tools", "ok", f"{foss_ran}/{len(tool_ids)} tools completed", foss_ran)
             elif tool_ids:
@@ -214,8 +222,10 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
                     emit("domain_recon", status, detail, added)
                     if recon.errors:
                         emit("domain_recon_notes", "skipped", "; ".join(recon.errors[:2]))
-                except Exception as exc:  # noqa: BLE001
-                    emit("domain_recon", "error", str(exc))
+                except (ValueError, TypeError, KeyError) as exc:
+                    emit("domain_recon", "error", f"Configuration error: {exc}")
+                except Exception as exc:
+                    emit("domain_recon", "error", f"Unexpected error: {exc}")
 
         # --- Social PAI: username / email / phone across platforms ---
         if config.social_pai:
@@ -232,8 +242,10 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
                     all_text.extend(pai.raw_text)
                 detail = f"{len(pai.profiles)} profiles, {pai.tools_run} tools"
                 emit("social_pai", "ok" if pai.profiles else "skipped", detail, len(pai.profiles))
-            except Exception as exc:  # noqa: BLE001
-                emit("social_pai", "error", str(exc))
+            except (ValueError, TypeError, KeyError) as exc:
+                emit("social_pai", "error", f"Configuration error: {exc}")
+            except Exception as exc:
+                emit("social_pai", "error", f"Unexpected error: {exc}")
 
         # --- Jina Reader: pull page text from top discovery URLs ---
         try:
@@ -247,8 +259,10 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
             jina_chunks = enrich_urls_with_jina(unique_urls, limit=5)
             all_text.extend(jina_chunks)
             emit("jina_enrich", "ok", f"{len(jina_chunks)} pages fetched", len(jina_chunks))
-        except Exception as exc:  # noqa: BLE001
-            emit("jina_enrich", "error", str(exc))
+        except (ValueError, TypeError, KeyError) as exc:
+            emit("jina_enrich", "error", f"Configuration error: {exc}")
+        except Exception as exc:
+            emit("jina_enrich", "error", f"Unexpected error: {exc}")
 
         # --- Extract leads from discovery snippets + evidence notes ---
         try:
@@ -269,8 +283,10 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
                 f"phones={len(merged['phone'])} emails={len(merged['email'])} addresses={len(merged['address'])}",
                 n,
             )
-        except Exception as exc:  # noqa: BLE001
-            emit("extract_leads", "error", str(exc))
+        except (ValueError, TypeError, KeyError) as exc:
+            emit("extract_leads", "error", f"Configuration error: {exc}")
+        except Exception as exc:
+            emit("extract_leads", "error", f"Unexpected error: {exc}")
 
         emit("serve_plan", "ok", "Use: osint serve-plan " + config.subject)
 
@@ -284,8 +300,10 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
                     formats=config.packet_formats,
                 )
                 emit("export_packet", "ok", ", ".join(result.packet_paths.keys()), len(result.packet_paths))
-            except Exception as exc:  # noqa: BLE001
-                emit("export_packet", "error", str(exc))
+            except (ValueError, TypeError, KeyError) as exc:
+                emit("export_packet", "error", f"Configuration error: {exc}")
+            except Exception as exc:
+                emit("export_packet", "error", f"Unexpected error: {exc}")
 
         finish_automation_run(s, auto_run, result)
 
