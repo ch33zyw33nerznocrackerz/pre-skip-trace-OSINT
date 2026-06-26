@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import typer
 
+from service_osint.core.config import get_config
 from service_osint.core.db import init_db
 from service_osint.core.env import load_env
+from service_osint.core.logging import setup_logging
 from service_osint.cli import (
     collect_cmd,
     discovery_cmd,
@@ -56,11 +58,33 @@ seeds.register(app, sources_app)
 def main(
     ctx: typer.Context,
     debug: bool = typer.Option(False, "--debug", "-d", help="Verbose error output"),
+    log_level: str = typer.Option("INFO", "--log-level", help="Logging level"),
+    log_json: bool = typer.Option(False, "--log-json", help="JSON log format"),
 ) -> None:
     """Initialize DB; launch interactive wizard when no subcommand is given."""
     ctx.ensure_object(dict)
     ctx.obj["debug"] = debug
+    
+    # Load environment and configuration
     load_env()
+    config = get_config()
+    
+    # Override config with CLI options
+    if debug:
+        config.debug = True
+        config.log_level = "DEBUG"
+    if log_level != "INFO":
+        config.log_level = log_level
+    if log_json:
+        config.log_json = True
+    
+    # Setup logging
+    setup_logging(
+        level=config.log_level,
+        log_file=True,
+        json_format=config.log_json,
+    )
+    
     try:
         init_db()
     except DatabaseError as exc:
@@ -72,6 +96,7 @@ def main(
         if debug:
             raise
         raise _typer.Exit(1) from exc
+    
     if ctx.invoked_subcommand is None:
         from service_osint.cli.interactive import run_interactive_wizard
 
