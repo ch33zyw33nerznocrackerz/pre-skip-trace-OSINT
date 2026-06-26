@@ -1,0 +1,6 @@
+# Build context: docker/foss (Dockerfile only today)
+.git
+.gitignore
+*.md
+README*
+.dockerignore

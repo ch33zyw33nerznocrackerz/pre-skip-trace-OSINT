@@ -1,0 +1,8 @@
+# Required by SearXNG >= 2025.x (even when server.limiter = false in settings.yml)
+# https://docs.searxng.org/admin/searx.limiter.html
+
+[botdetection]
+ip_limit.filter_link_local = false
+
+[botdetection.ip_limit]
+link_token = false

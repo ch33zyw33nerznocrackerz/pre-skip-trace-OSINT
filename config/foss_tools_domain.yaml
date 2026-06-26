@@ -1,0 +1,82 @@
+# ProjectDiscovery domain / subdomain recon — run via `osint domain scan` or pipeline `--domain-recon`.
+# Requires FOSS_DOCKER=1 (binaries in foss image) or local installs on PATH.
+
+tools:
+  - id: subfinder
+    name: subfinder
+    repo: https://github.com/projectdiscovery/subfinder
+    install: "FOSS_DOCKER=1 or download from ProjectDiscovery releases"
+    command: ["subfinder", "-d", "{domain}", "-silent", "-o", "{output_dir}/subs.txt"]
+    input: domain
+    category: domain_recon
+    docker_cwd: /tools
+    runner: binary
+    description: "Passive subdomain enumeration (crt.sh, Chaos, etc.)"
+    timeout_seconds: 300
+
+  - id: dnsx
+    name: dnsx
+    repo: https://github.com/projectdiscovery/dnsx
+    install: "FOSS_DOCKER=1 or download from ProjectDiscovery releases"
+    command:
+      [
+        "dnsx",
+        "-l",
+        "{output_dir}/subs.txt",
+        "-resp",
+        "-silent",
+        "-o",
+        "{output_dir}/resolved.txt",
+      ]
+    input: domain
+    category: domain_recon
+    docker_cwd: /tools
+    runner: binary
+    description: "Resolve subdomain list — A/AAAA/MX records"
+    timeout_seconds: 180
+
+  - id: httpx-pd
+    name: httpx (ProjectDiscovery)
+    repo: https://github.com/projectdiscovery/httpx
+    install: "FOSS_DOCKER=1 — distinct from Python httpx library"
+    command:
+      [
+        "httpx",
+        "-l",
+        "{output_dir}/resolved.txt",
+        "-title",
+        "-status-code",
+        "-json",
+        "-silent",
+        "-o",
+        "{output_dir}/live.json",
+      ]
+    input: domain
+    category: domain_recon
+    docker_cwd: /tools
+    runner: binary
+    description: "Probe live HTTP hosts from resolved names"
+    timeout_seconds: 300
+
+  - id: tlsx
+    name: tlsx
+    repo: https://github.com/projectdiscovery/tlsx
+    install: "FOSS_DOCKER=1 or download from ProjectDiscovery releases"
+    command:
+      [
+        "tlsx",
+        "-l",
+        "{output_dir}/resolved.txt",
+        "-san",
+        "-cn",
+        "-json",
+        "-silent",
+        "-o",
+        "{output_dir}/tls.json",
+      ]
+    input: domain
+    category: domain_recon
+    docker_cwd: /tools
+    runner: binary
+    description: "TLS certificate SANs and common names"
+    timeout_seconds: 240

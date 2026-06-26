@@ -1,0 +1,27 @@
+# If build context is repo root (docker/foss/Dockerfile)
+.git
+.github
+.cursor
+.venv
+venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+out
+**/*.db
+.env
+.env.*
+!.env.example
+tests
+docs
+service_osint
+terminals
+*.md
+uv.lock
+pyproject.toml
+justfile
+service_osint.code-workspace
+**/.git
+**/node_modules

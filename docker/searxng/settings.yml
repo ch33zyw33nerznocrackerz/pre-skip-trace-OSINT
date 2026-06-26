@@ -1,0 +1,15 @@
+use_default_settings: true
+
+server:
+  secret_key: "service-osint-local-dev-change-me"
+  limiter: false
+  port: 8080
+  bind_address: "0.0.0.0"
+  public_instance: false
+
+search:
+  safe_search: 0
+  formats:
+    - html
+    - json
+

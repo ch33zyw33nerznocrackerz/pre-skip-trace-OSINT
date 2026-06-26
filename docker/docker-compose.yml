@@ -1,0 +1,93 @@
+# Self-hosted stack for service-osint discovery + FOSS crawlers.
+#
+# Fast builds (BuildKit + layer cache):
+#   set DOCKER_BUILDKIT=1
+#   docker compose -f docker/docker-compose.yml build foss
+#
+# Then in .env:
+#   SEARXNG_URL=http://127.0.0.1:8080
+#   FOSS_DOCKER=1
+#   DOCKER_COMPOSE_FILE=docker/docker-compose.yml
+
+x-foss-build: &foss-build
+  context: ./foss
+  dockerfile: Dockerfile
+  cache_from:
+    - service-osint-foss:latest
+  args:
+    BUILDKIT_INLINE_CACHE: "true"
+
+services:
+  searxng:
+    image: searxng/searxng:${SEARXNG_IMAGE_TAG:-latest}
+    pull_policy: if_not_present
+    container_name: service-osint-searxng
+    restart: unless-stopped
+    # Host port mapping only — do not pass full .env (SEARXNG_PORT would bind wrong port inside container)
+    ports:
+      - "${SEARXNG_PORT:-8080}:8080"
+    volumes:
+      - ./searxng:/etc/searxng:ro
+      - searxng-cache:/var/cache/searxng:rw
+    environment:
+      SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://127.0.0.1:8080/}
+      FORCE_OWNERSHIP: "true"
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    logging:
+      driver: json-file
+      options:
+        max-size: 1m
+        max-file: 1
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  foss:
+    build: *foss-build
+    image: service-osint-foss:latest
+    pull_policy: build
+    container_name: service-osint-foss
+    profiles:
+      - tools
+    volumes:
+      - foss-output:/output
+    working_dir: /tools
+    entrypoint: ["sleep", "infinity"]
+    init: true
+    healthcheck:
+      test: ["CMD", "python", "--version"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  spiderfoot-web:
+    build: *foss-build
+    image: service-osint-foss:latest
+    pull_policy: never
+    container_name: service-osint-spiderfoot
+    profiles:
+      - ui
+    ports:
+      - "${SPIDERFOOT_PORT:-5001}:5001"
+    volumes:
+      - spiderfoot-data:/tools/spiderfoot
+      - foss-output:/output
+    working_dir: /tools/spiderfoot
+    command: ["python", "sf.py", "-l", "0.0.0.0:5001"]
+    restart: unless-stopped
+    init: true
+
+volumes:
+  foss-output:
+  spiderfoot-data:
+  searxng-cache:

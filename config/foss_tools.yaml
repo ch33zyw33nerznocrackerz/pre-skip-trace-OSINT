@@ -1,0 +1,39 @@
+# FOSS CLI tools — run via `osint foss run <id>` or pipeline `--foss`.
+# With Docker: set FOSS_DOCKER=1 and `docker compose -f docker/docker-compose.yml --profile tools up -d`
+
+tools:
+  - id: spiderfoot-email
+    name: SpiderFoot (email)
+    repo: https://github.com/smicallef/spiderfoot
+    install: "docker compose -f docker/docker-compose.yml --profile tools up -d foss  OR  clone + pip install -r requirements.txt"
+    command: ["sf.py", "-s", "{email}", "-t", "EMAILADDR", "-q", "-maxf", "25"]
+    input: email
+    category: email
+    description: "Modular OSINT scan from email (SPIDERFOOT_DIR or FOSS_DOCKER)"
+    cwd_env: SPIDERFOOT_DIR
+    docker_cwd: /tools/spiderfoot
+    timeout_seconds: 900
+
+  - id: spiderfoot-domain
+    name: SpiderFoot (domain)
+    repo: https://github.com/smicallef/spiderfoot
+    install: "Set SPIDERFOOT_DIR or use FOSS_DOCKER=1"
+    command: ["sf.py", "-s", "{domain}", "-t", "INTERNET_NAME", "-q", "-maxf", "25"]
+    input: domain
+    category: domain
+    description: "Modular OSINT scan from domain or hostname"
+    cwd_env: SPIDERFOOT_DIR
+    docker_cwd: /tools/spiderfoot
+    timeout_seconds: 900
+
+  - id: photon
+    name: Photon
+    repo: https://github.com/s0md3v/Photon
+    install: "docker compose -f docker/docker-compose.yml --profile tools up -d foss  OR  git clone Photon"
+    command: ["photon.py", "-u", "{url}", "-o", "{output_dir}", "-t", "10", "--dns", "--keys"]
+    input: url
+    category: web_crawl
+    description: "Deep crawl seed URL — emails, files, subdomains"
+    cwd_env: PHOTON_DIR
+    docker_cwd: /tools/Photon
+    timeout_seconds: 600

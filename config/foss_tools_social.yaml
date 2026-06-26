@@ -1,0 +1,70 @@
+# Social / platform PAI tools — username, email, phone pivots across 400+ sites.
+# Run: osint social scan | osint foss run sherlock --username handle
+# Docker: FOSS_DOCKER=1 (same foss image includes pip-installed social tools)
+
+tools:
+  - id: sherlock
+    name: Sherlock
+    repo: https://github.com/sherlock-project/sherlock
+    install: "pip install sherlock-project  OR  FOSS_DOCKER=1"
+    command: ["sherlock", "{username}", "--print-found", "--no-color", "--folderoutput", "{output_dir}"]
+    input: username
+    category: username
+    runner: binary
+    description: "Hunt usernames across 400+ social networks and forums"
+    timeout_seconds: 600
+
+  - id: maigret
+    name: Maigret
+    repo: https://github.com/soxoj/maigret
+    install: "pip install maigret  OR  FOSS_DOCKER=1"
+    command: ["maigret", "{username}", "--json", "simple", "-fo", "{output_dir}"]
+    input: username
+    category: username
+    runner: binary
+    description: "Deep username search with profile metadata extraction"
+    timeout_seconds: 900
+
+  - id: holehe
+    name: holehe
+    repo: https://github.com/megadose/holehe
+    install: "pip install holehe  OR  FOSS_DOCKER=1"
+    command: ["holehe", "{email}", "--only-used"]
+    input: email
+    category: email
+    runner: binary
+    description: "Check which sites an email is registered on (public checks only)"
+    timeout_seconds: 300
+
+  - id: socialscan-email
+    name: Socialscan (email)
+    repo: https://github.com/iojw/socialscan
+    install: "pip install socialscan  OR  FOSS_DOCKER=1"
+    command: ["socialscan", "{email}"]
+    input: email
+    category: email
+    runner: binary
+    description: "Email registration across major platforms (Instagram, Twitter, etc.)"
+    timeout_seconds: 180
+
+  - id: socialscan-username
+    name: Socialscan (username)
+    repo: https://github.com/iojw/socialscan
+    install: "pip install socialscan  OR  FOSS_DOCKER=1"
+    command: ["socialscan", "{username}"]
+    input: username
+    category: username
+    runner: binary
+    description: "Username availability / registration across major platforms"
+    timeout_seconds: 180
+
+  - id: ignorant
+    name: Ignorant
+    repo: https://github.com/megadose/ignorant
+    install: "pip install ignorant  OR  FOSS_DOCKER=1"
+    command: ["ignorant", "{phone}"]
+    input: phone
+    category: phone
+    runner: binary
+    description: "Check if phone is linked to social accounts (Instagram, Snapchat, etc.)"
+    timeout_seconds: 180
