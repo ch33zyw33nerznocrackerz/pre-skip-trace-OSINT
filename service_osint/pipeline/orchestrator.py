@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import logging
 import time
 from service_osint.collectors import persist_collection, run_collector
+from service_osint.core.cache import get_cache
+from service_osint.core.config import get_config
 from service_osint.core.db import SessionLocal
+from service_osint.core.http import get_http_client
 from service_osint.discovery import discover
 from service_osint.domain import resolve_scan_domain, run_domain_recon
 from service_osint.export import write_full_packet
@@ -26,6 +30,12 @@ from service_osint.sources.dorks import google_search_url, person_dorks
 
 def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
     """Execute full OSINT automation for a subject."""
+    logger = logging.getLogger(__name__)
+    app_config = get_config()
+    cache = get_cache()
+    http_client = get_http_client()
+    
+    logger.info(f"Starting pipeline for subject: {config.subject}")
     result = PipelineResult(subject=config.subject, defendant_id=0)
 
     def emit(step: str, status: str, detail: str = "", count: int = 0, duration_ms: float = 0.0) -> None:
@@ -54,7 +64,7 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
         result.automation_run_id = auto_run.id
 
         # --- Dork seed URLs ---
-        try:
+        def run_dorks_seed():
             dorks = person_dorks(
                 config.subject,
                 city=config.city,
@@ -66,6 +76,9 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
             n = persist_dork_seeds(s, defendant.id, dorks, google_search_url)
             result.evidence_added += n
             emit("dorks_seed", "ok", f"{len(dorks)} dorks, {n} new URLs", n)
+        
+        try:
+            timed_step("dorks_seed", run_dorks_seed)
         except (ValueError, TypeError, KeyError) as exc:
             emit("dorks_seed", "error", f"Configuration error: {exc}")
         except Exception as exc:
@@ -76,9 +89,22 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
 
         # --- Discovery: person query ---
         if config.discovery:
-            try:
+            def run_person_discovery():
                 q = person_discovery_query(config)
-                blocks = discover(q, limit=config.discovery_limit)
+                
+                # Check cache first
+                cache_key = f"discovery:{hash((q, config.discovery_limit))}"
+                cached_blocks = cache.get(cache_key)
+                
+                if cached_blocks is None:
+                    logger.debug(f"Cache miss for discovery query: {q}")
+                    blocks = discover(q, limit=config.discovery_limit)
+                    # Cache for 1 hour
+                    cache.set(cache_key, blocks, ttl=3600)
+                else:
+                    logger.debug(f"Cache hit for discovery query: {q}")
+                    blocks = cached_blocks
+                
                 hits = []
                 for block in blocks:
                     if block.error:
@@ -91,6 +117,9 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
                 result.discovery_hits += len(hits)
                 result.evidence_added += n
                 emit("discovery_person", "ok", f"{len(hits)} hits, {n} new evidence", n)
+            
+            try:
+                timed_step("discovery_person", run_person_discovery)
             except (ValueError, TypeError, KeyError) as exc:
                 emit("discovery_person", "error", f"Configuration error: {exc}")
             except Exception as exc:

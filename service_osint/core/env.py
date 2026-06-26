@@ -92,6 +92,18 @@ def env_summary() -> dict[str, str]:
                     out[key] = f"{value} (invalid URL format)"
                 else:
                     out[key] = value
+            elif key == "SEC_CONTACT_EMAIL" and value:
+                # Basic email validation
+                if "@" not in value or "." not in value.split("@")[-1]:
+                    out[key] = f"{value} (invalid email format)"
+                else:
+                    out[key] = value
+            elif key == "FOSS_DOCKER" and value:
+                # Validate boolean-like values
+                if value.lower() not in {"1", "true", "yes", "on", "0", "false", "no", "off"}:
+                    out[key] = f"{value} (should be 1/true/yes/on or 0/false/no/off)"
+                else:
+                    out[key] = value
             else:
                 out[key] = value
     return out

@@ -74,7 +74,13 @@ def main(
         config.debug = True
         config.log_level = "DEBUG"
     if log_level != "INFO":
-        config.log_level = log_level
+        config.log_level = log_level.upper()
+        # Validate log level
+        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if config.log_level not in valid_levels:
+            import typer as _typer
+            _typer.echo(f"Invalid log level: {log_level}. Must be one of: {', '.join(valid_levels)}", err=True)
+            raise _typer.Exit(1)
     if log_json:
         config.log_json = True
     

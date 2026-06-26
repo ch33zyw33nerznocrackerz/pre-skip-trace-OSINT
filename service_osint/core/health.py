@@ -107,11 +107,22 @@ def check_database(*, create: bool = False) -> HealthCheck:
             )
         with SessionLocal() as session:
             session.execute(text("SELECT COUNT(*) FROM defendants"))
+        
+        # Check connection pool status
+        pool = engine.pool
+        pool_details = {
+            "path": str(DB_PATH),
+            "tables": str(len(tables)),
+            "pool_size": str(pool.size()),
+            "checked_in": str(pool.checkedin()),
+            "checked_out": str(pool.checkedout()),
+        }
+        
         return HealthCheck(
             name="database",
             status="ok",
             message=f"SQLite OK ({len(tables)} tables)",
-            details={"path": str(DB_PATH)},
+            details=pool_details,
         )
     except DatabaseError:
         raise
@@ -336,6 +347,7 @@ def run_health_checks(
     probe_searxng: bool = False,
     include_foss: bool = True,
     include_playwright: bool = False,
+    include_cache: bool = True,
 ) -> list[HealthCheck]:
     """Run all startup health checks."""
     checks: list[HealthCheck] = [
@@ -345,6 +357,8 @@ def run_health_checks(
         _timed(lambda: check_database_safe(create=init_db_if_missing)),
         _timed(check_discovery_providers),
     ]
+    if include_cache:
+        checks.append(_timed(check_cache))
     if probe_searxng:
         checks.append(_timed(check_searxng))
     checks.append(_timed(check_docker))
@@ -361,6 +375,52 @@ def overall_status(checks: list[HealthCheck]) -> HealthStatus:
     if any(c.status == "warn" for c in checks):
         return "warn"
     return "ok"
+
+
+def check_cache() -> HealthCheck:
+    """Check cache system health."""
+    try:
+        from service_osint.core.cache import get_cache
+        
+        cache = get_cache()
+        
+        # Test cache operations
+        test_key = "health_check_test"
+        test_value = {"timestamp": time.time(), "test": True}
+        
+        cache.set(test_key, test_value, ttl=60)
+        retrieved = cache.get(test_key)
+        cache.delete(test_key)
+        
+        if retrieved != test_value:
+            return HealthCheck(
+                name="cache",
+                status="warn",
+                message="Cache read/write test failed",
+                hint="Cache directory may not be writable",
+            )
+        
+        # Get cache statistics
+        cache_files = list(cache.cache_dir.glob("*.cache"))
+        total_size = sum(f.stat().st_size for f in cache_files if f.exists())
+        
+        return HealthCheck(
+            name="cache",
+            status="ok",
+            message=f"Cache operational ({len(cache_files)} files, {total_size // 1024}KB)",
+            details={
+                "cache_dir": str(cache.cache_dir),
+                "files": str(len(cache_files)),
+                "size_kb": str(total_size // 1024),
+            },
+        )
+    except Exception as exc:
+        return HealthCheck(
+            name="cache",
+            status="warn",
+            message=f"Cache system error: {exc}",
+            hint="Check cache directory permissions",
+        )
 
 
 def env_keys_summary() -> HealthCheck:
