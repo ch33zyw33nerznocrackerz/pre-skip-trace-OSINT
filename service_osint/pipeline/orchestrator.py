@@ -54,8 +54,10 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
             n = persist_dork_seeds(s, defendant.id, dorks, google_search_url)
             result.evidence_added += n
             emit("dorks_seed", "ok", f"{len(dorks)} dorks, {n} new URLs", n)
-        except Exception as exc:  # noqa: BLE001
-            emit("dorks_seed", "error", str(exc))
+        except (ValueError, TypeError, KeyError) as exc:
+            emit("dorks_seed", "error", f"Configuration error: {exc}")
+        except Exception as exc:
+            emit("dorks_seed", "error", f"Unexpected error: {exc}")
 
         all_text: list[str] = []
         hit_urls: list[str] = []

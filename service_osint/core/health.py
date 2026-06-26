@@ -4,12 +4,16 @@ import os
 import shutil
 import sys
 import time
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
 import httpx
+
+# Health check constants
+DEFAULT_SEARXNG_TIMEOUT = 15.0
+DEFAULT_SEARXNG_RETRIES = 4
+SEARXNG_RETRY_DELAY = 3.0
 from sqlalchemy import inspect, text
 
 from service_osint.core.db import APP_DIR, DB_PATH, SessionLocal, engine, init_db
@@ -172,7 +176,7 @@ def check_discovery_providers() -> HealthCheck:
     )
 
 
-def check_searxng(*, timeout: float = 15.0, retries: int = 4) -> HealthCheck:
+def check_searxng(*, timeout: float = DEFAULT_SEARXNG_TIMEOUT, retries: int = DEFAULT_SEARXNG_RETRIES) -> HealthCheck:
     cfg = DiscoveryConfig.from_env()
     base = (cfg.searxng_url or "").rstrip("/")
     if not base:
@@ -219,7 +223,7 @@ def check_searxng(*, timeout: float = 15.0, retries: int = 4) -> HealthCheck:
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
             if attempt < retries - 1:
-                time.sleep(3.0)
+                time.sleep(SEARXNG_RETRY_DELAY)
                 continue
 
     assert last_exc is not None

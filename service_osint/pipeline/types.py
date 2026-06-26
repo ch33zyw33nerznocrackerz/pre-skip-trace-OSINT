@@ -2,12 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
+
+EntityType = Literal["person", "organization", "business"]
+StepStatus = Literal["ok", "skipped", "error"]
+PacketFormat = Literal["html", "json", "csv", "pdf"]
 
 
 @dataclass
 class PipelineConfig:
     subject: str
-    entity_type: str = "person"
+    entity_type: EntityType = "person"
     city: str | None = None
     state: str | None = None
     phone: str | None = None
@@ -23,7 +28,7 @@ class PipelineConfig:
     dork_limit: int = 3
     collectors: list[str] | None = None
     export_packet: bool = True
-    packet_formats: set[str] = field(default_factory=lambda: {"html", "json", "csv", "pdf"})
+    packet_formats: set[PacketFormat] = field(default_factory=lambda: {"html", "json", "csv", "pdf"})
     out_dir: Path = field(default_factory=lambda: Path("out"))
     foss: bool = False
     social_pai: bool = False
@@ -34,7 +39,7 @@ class PipelineConfig:
 @dataclass
 class StepResult:
     step: str
-    status: str  # ok, skipped, error
+    status: StepStatus
     detail: str = ""
     count: int = 0
 
