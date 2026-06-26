@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass
 from typing import Literal
 
@@ -166,3 +167,25 @@ def discovery_ready_count() -> tuple[int, int]:
     discovery = [s for s in API_KEY_SPECS if s.category == "discovery"]
     ready = sum(1 for s in discovery if s.is_configured())
     return ready, len(discovery)
+
+
+class RateLimiter:
+    """Simple rate limiter for API calls."""
+    
+    def __init__(self, calls_per_minute: int = 60) -> None:
+        self.calls_per_minute = calls_per_minute
+        self.call_times: list[float] = []
+    
+    def wait_if_needed(self) -> None:
+        """Block if rate limit would be exceeded."""
+        now = time.time()
+        # Remove calls older than 1 minute
+        self.call_times = [t for t in self.call_times if now - t < 60]
+        
+        if len(self.call_times) >= self.calls_per_minute:
+            # Wait until the oldest call is more than 1 minute old
+            sleep_time = 60 - (now - self.call_times[0]) + 0.1
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+        
+        self.call_times.append(now)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from service_osint.collectors import persist_collection, run_collector
 from service_osint.core.db import SessionLocal
 from service_osint.discovery import discover
@@ -27,11 +28,22 @@ def run_pipeline(config: PipelineConfig, on_step=None) -> PipelineResult:
     """Execute full OSINT automation for a subject."""
     result = PipelineResult(subject=config.subject, defendant_id=0)
 
-    def emit(step: str, status: str, detail: str = "", count: int = 0) -> None:
-        sr = StepResult(step=step, status=status, detail=detail, count=count)
+    def emit(step: str, status: str, detail: str = "", count: int = 0, duration_ms: float = 0.0) -> None:
+        sr = StepResult(step=step, status=status, detail=detail, count=count, duration_ms=duration_ms)
         result.steps.append(sr)
         if on_step:
             on_step(sr)
+
+    def timed_step(step_name: str, fn):
+        """Execute a function and emit timing information."""
+        start_time = time.perf_counter()
+        try:
+            return fn()
+        finally:
+            duration = (time.perf_counter() - start_time) * 1000
+            # Update the last step result with timing if it matches
+            if result.steps and result.steps[-1].step == step_name:
+                result.steps[-1].duration_ms = round(duration, 1)
 
     with SessionLocal() as s:
         defendant = ensure_subject(s, config)

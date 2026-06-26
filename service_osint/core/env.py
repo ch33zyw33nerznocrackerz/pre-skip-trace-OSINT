@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 from pathlib import Path
 
 _ENV_LOADED_FROM: Path | None = None
@@ -74,6 +75,7 @@ def load_env() -> Path | None:
     return None
 
 
+@lru_cache(maxsize=1)
 def env_summary() -> dict[str, str]:
     """Return tracked env vars with values masked for debug output."""
     out: dict[str, str] = {}
@@ -93,3 +95,8 @@ def env_summary() -> dict[str, str]:
             else:
                 out[key] = value
     return out
+
+
+def clear_env_cache() -> None:
+    """Clear the cached environment summary."""
+    env_summary.cache_clear()

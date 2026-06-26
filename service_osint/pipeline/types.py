@@ -62,6 +62,7 @@ class StepResult:
     status: StepStatus
     detail: str = ""
     count: int = 0
+    duration_ms: float = 0.0
 
 
 @dataclass

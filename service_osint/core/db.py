@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import logging
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Generator
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from service_osint.core.errors import DatabaseError
 
@@ -70,3 +72,17 @@ def verify_db_connection() -> bool:
 
 def table_names() -> list[str]:
     return inspect(engine).get_table_names()
+
+
+@contextmanager
+def get_session() -> Generator[Session, None, None]:
+    """Context manager for database sessions with automatic rollback on error."""
+    session = SessionLocal()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
